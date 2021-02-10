@@ -1,0 +1,79 @@
+// Version 0.3
+// Modded by Ben Palma
+int val = 0;               //Throttle value from Throttle
+int val2 = 0;              //Torque value from PAS Value
+int val3 = 0;              //Cadence Signal value from PAS
+int Throttle = 1;          //Input Throttle signal  
+int PASTorque = 2;         //Input Torque Signal from PAS
+int PASCadence = 3;        //Input Cadence Signal from PAS 
+int ControllerC = 4;       //Output Cadence Signal from PAS
+int ControllerT = 5;       //Output Torque Signal 1.5v (76) - 4.3v which is 219 max, not 255
+bool throttle = false;
+unsigned long startMillis;
+unsigned long currentMillis;
+int pulseoff = 600;
+int pulseon = 0;
+bool pulse = false;
+bool throt = false;
+
+void setup() {
+  pinMode(Throttle, INPUT);
+  pinMode(PASTorque, INPUT);
+  pinMode(PASCadence, INPUT);
+  pinMode(ControllerC, OUTPUT);
+  pinMode(ControllerT, OUTPUT);
+  Serial.begin(9600);
+}
+
+void loop()
+{
+  digitalWrite(ControllerT, HIGH);
+  currentMillis = millis();
+  val = analogRead(Throttle);
+  pulseoff = (600 - (val / 1.7)) + 120;
+  pulseon = int(pulseoff / 3);
+  if (pulse == false) {
+    if (pulseoff < 550) {
+      if (throttle == false) { //removes the halfsecond possible delay on first start up.
+        analogWrite(ControllerT, val / 4);
+        analogWrite(ControllerC, HIGH);
+        throt = true;
+        pulse = true;
+      } else {
+        if (currentMillis > (startMillis + pulseoff)) { //send pulse
+          analogWrite(ControllerT, val / 4);
+          analogWrite(ControllerC, HIGH);
+          Serial.println(pulseoff);
+          pulse = true;
+          startMillis = millis();
+          throt = true;
+        }
+      }
+    } else {
+      throttle = false;
+    }
+  } else {
+    if (currentMillis > (startMillis + pulseon)) {
+      pulse = false;
+      digitalWrite(LED_BUILTIN, LOW);
+    }
+  }
+}
+
+void Pedalon()    //Called when pedal is moved
+{
+  if (throttle == false) { //Only passes signal if throttle is not being used, otherwise ignored.
+    if (digitalRead(2) == HIGH) {
+      val2 = analogRead(PASTorque);
+      val3 = analogRead(PASCadence);
+      analogWrite(ControllerT, val / 4);
+      analogWrite(ControllerC, HIGH);
+    } else {
+      val2 = analogRead(PASTorque);
+      val3 = analogRead(PASCadence);
+      analogWrite(ControllerT, val / 4);
+      analogWrite(ControllerC, HIGH);
+    }
+    Serial.println("pedal round..");
+  }
+}
